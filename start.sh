@@ -47,4 +47,12 @@ expect <<EOF
 EOF
 done < ./vagrant/ip_address.txt
 
+# Create inventory for ansible
+echo "[servers]" > ./inventory.INI
+cat ./vagrant/ip_address.txt >> ./inventory.INI
+echo "[master]" >> ./inventory.INI
+head -n 1 ./vagrant/ip_address.txt >> ./inventory.INI
+
+echo "[workers]" >>./inventory.INI
+tail -n +2 ./vagrant/ip_address.txt >> ./inventory.INI
 
