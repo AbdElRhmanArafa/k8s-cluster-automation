@@ -1,0 +1,17 @@
+# Ansible
+.ansible/
+
+# Vagrant
+.vagrant/
+*.box
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# General Ignore
+*.log
+*.tmp
+*.swp
+.DS_Store
+vagrant/ip_address.txt

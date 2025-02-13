@@ -1,0 +1,31 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+Vagrant.configure("2") do |config|
+  (1..2).each do |i|
+    config.vm.define "node#{i}" do |node|
+      node.vm.box = "ubuntu/bionic64"
+      node.vm.hostname = "node#{i}"
+      node.vm.network "private_network", type: "dhcp"
+
+      node.vm.provider "virtualbox" do |vb|
+        vb.memory = "1048"
+        vb.cpus = 1
+        vb.name = "node#{i}"
+      end
+
+      node.vm.provision "shell", path: "bootstrap.sh"
+    end
+  end
+
+  config.trigger.after :up do |trigger|
+    trigger.name = "Getting the IP address of the VMs"
+    trigger.ruby do 
+      File.open("ip_address.txt", "w") do |f|
+        (1..2).each do |i|
+          ip = %x(vagrant ssh node#{i} -c "hostname -I | cut -d' ' -f2").strip
+          f.write("#{ip}\n")
+        end
+      end
+    end
+  end
+end
