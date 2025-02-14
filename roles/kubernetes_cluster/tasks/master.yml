@@ -1,0 +1,32 @@
+---
+# tasks for master nodes
+
+
+- name: Ensure swap is disabled on boot
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '^\s*/swap.img\s+none\s+swap\s+sw\s+0\s+0'
+    line: '#/swap.img none swap sw 0 0'
+    state: present
+
+- name: Disable swap
+  ansible.builtin.command:
+    cmd: swapoff -a
+
+- name: Set hostname
+  ansible.builtin.hostname:
+    name: "controlplane"
+
+- name: Initialize Kubernetes cluster
+  ansible.builtin.command:
+    cmd: kubeadm init --pod-network-cidr=10.244.0.0/16
+    creates: /etc/kubernetes/admin.conf
+  register: kubeadm_output
+  changed_when: false
+
+- name: Store join command output to file
+  ansible.builtin.copy:
+    content: "{{ kubeadm_output.stdout_lines[0] }}"
+    dest: /tmp/kubeadm_join_command
+    mode: '0755'
+  delegate_to: localhost

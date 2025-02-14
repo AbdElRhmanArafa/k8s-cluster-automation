@@ -19,7 +19,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Check if the IP address file exists
-if [ ! -f "ip_address.txt" ]; then
+if [ ! -f "./ip_address.txt" ]; then
     echo "Error: ip_address.txt file not found!"
     exit 1
 fi
@@ -45,14 +45,12 @@ expect <<EOF
     send "$password\r"
     expect eof
 EOF
-done < ./vagrant/ip_address.txt
+done < ./ip_address.txt
 
 # Create inventory for ansible
-echo "[servers]" > ./inventory.INI
-cat ./vagrant/ip_address.txt >> ./inventory.INI
-echo "[master]" >> ./inventory.INI
-head -n 1 ./vagrant/ip_address.txt >> ./inventory.INI
+echo "[master]" > ../inventory.INI
+head -n 1 ./ip_address.txt >> ./inventory.INI
 
 echo "[workers]" >>./inventory.INI
-tail -n +2 ./vagrant/ip_address.txt >> ./inventory.INI
+tail -n +2 ./ip_address.txt >> ./inventory.INI
 
