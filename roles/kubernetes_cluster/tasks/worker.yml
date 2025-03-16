@@ -1,0 +1,41 @@
+- name: Set the hostname of the worker node
+  ansible.builtin.hostname:
+    name: "worker"
+  become: true
+
+- name: Copy file to worker nodes
+  ansible.builtin.copy:
+    src: ./kubeadm_token_command
+    dest: /home/{{ ansible_user }}/kubeadm_token_command
+    mode: '0755'
+
+- name: Check if the worker node is ready to join the cluster by checking if the /etc/kubernetes/pki/ca.crt file exists
+  ansible.builtin.stat:
+    path: /etc/kubernetes/pki/ca.crt
+  register: ca_crt_file
+
+
+  
+- name: Join worker nodes to the cluster
+  ansible.builtin.command:
+    cmd: "bash  /home/{{ ansible_user }}/kubeadm_token_command"
+  become: true
+  when: ca_crt_file.stat.exists == false
+
+- name: Remove the join command file
+  ansible.builtin.file:
+    path: /home/{{ ansible_user }}/kubeadm_token_command
+    state: absent
+
+- name: Create a directory for the kubelet configuration
+  ansible.builtin.file:
+    path: ~/.kube
+    state: directory
+    mode: '0755'
+  become_user: "{{ ansible_user }}"
+
+- name: Copy the kubeconfig file to the worker node
+  ansible.builtin.copy:
+    src: ./config
+    dest: "/home/{{ ansible_user }}/.kube/config"
+  become: true
