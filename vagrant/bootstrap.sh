@@ -1,7 +1,11 @@
 #!/bin/bash
 
 sudo apt-get update
-
+if ! id "ubuntu" &>/dev/null; then
+    sudo useradd -m -s /bin/bash ubuntu
+    echo "ubuntu:it" | sudo chpasswd
+    echo "User 'ubuntu' created with password 'it'"
+fi
 # Set password for ubuntu user
 echo 'vagrant:it' | sudo chpasswd
 
