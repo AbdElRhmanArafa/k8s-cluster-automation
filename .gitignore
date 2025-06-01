@@ -18,3 +18,4 @@ vagrant/ip_address.txt
 inventory.INI
 kubeadm_token_command
 config
+inventory.ini

@@ -1,14 +1,17 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
+# define matadata 
 Vagrant.configure("2") do |config|
-  (1..2).each do |i|
+  node_count = ENV['NODE_COUNT'] ? ENV['NODE_COUNT'].to_i : 3
+  
+  (1..node_count).each do |i|
     config.vm.define "node#{i}" do |node|
       node.vm.box = "generic/ubuntu2004" 
       node.vm.hostname = "node#{i}"
 
       node.vm.provider :libvirt do |libvirt|
-        libvirt.memory = i == 1 ? "2048" : "1024"
-        libvirt.cpus = i == 1 ? 2 : 1
+        libvirt.memory = i == 1 ? "3048" : "2024"
+        libvirt.cpus = i == 1 ? 3 : 2
       end
 
       node.vm.provision "shell", path: "bootstrap.sh"
@@ -18,8 +21,10 @@ Vagrant.configure("2") do |config|
   config.trigger.after :up do |trigger|
     trigger.name = "Getting the IP address of the VMs"
     trigger.ruby do 
+      node_count = ENV['NODE_COUNT'] ? ENV['NODE_COUNT'].to_i : 3
+      
       File.open("ip_address.txt", "w") do |f|
-        (1..2).each do |i|
+        (1..node_count).each do |i|
           ip = %x(vagrant ssh node#{i} -c "hostname -I | awk '{print $1} '").strip
           f.write("#{ip}\n")
         end
