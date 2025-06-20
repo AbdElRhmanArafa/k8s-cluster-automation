@@ -19,3 +19,4 @@ inventory.INI
 kubeadm_token_command
 config
 inventory.ini
+cache

@@ -80,4 +80,3 @@ Integrate monitoring and logging solutions such as Prometheus and Grafana to mon
 Use Terraform to provision the infrastructure (VMs) instead of Vagrant. This can provide more flexibility and scalability in managing the cluster's resources.
 
 ### 6. Add password in Secret file or environment variable
-Add password in secret file or environment variable to make the setup more secure.

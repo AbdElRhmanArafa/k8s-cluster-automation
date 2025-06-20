@@ -1,19 +1,46 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
-# define matadata 
+# define metadata 
 Vagrant.configure("2") do |config|
   node_count = ENV['NODE_COUNT'] ? ENV['NODE_COUNT'].to_i : 3
-  
+  master_count = ENV['MASTER_COUNT'] ? ENV['MASTER_COUNT'].to_i : 1
+  ha_proxy = ENV['HA_PROXY'] ? ENV['HA_PROXY'].to_s == 'true' : false
   (1..node_count).each do |i|
-    config.vm.define "node#{i}" do |node|
+    vm_name = i <= master_count ? "master#{i}" : "worker#{i-master_count}"
+    config.vm.define vm_name do |node|
       node.vm.box = "generic/ubuntu2004" 
-      node.vm.hostname = "node#{i}"
 
+      if i <= master_count
+        node.vm.hostname = "master-node#{i}"
+      else
+        node.vm.hostname = "worker-node#{i - master_count}"
+      end
+  
       node.vm.provider :libvirt do |libvirt|
-        libvirt.memory = i == 1 ? "3048" : "2024"
-        libvirt.cpus = i == 1 ? 3 : 2
+        if i <= master_count
+          libvirt.memory = 2048
+          libvirt.cpus = 2
+        else
+          libvirt.memory = 1024
+          libvirt.cpus = 1
+        end
       end
 
+      node.vm.provision "shell", path: "bootstrap.sh"
+    end
+  end
+  
+  # Add HA Proxy VM if enabled
+  if ha_proxy
+    config.vm.define "haproxy" do |node|
+      node.vm.box = "generic/ubuntu2004"
+      node.vm.hostname = "haproxy"
+      
+      node.vm.provider :libvirt do |libvirt|
+        libvirt.memory = 512
+        libvirt.cpus = 1
+      end
+      
       node.vm.provision "shell", path: "bootstrap.sh"
     end
   end
@@ -22,12 +49,40 @@ Vagrant.configure("2") do |config|
     trigger.name = "Getting the IP address of the VMs"
     trigger.ruby do 
       node_count = ENV['NODE_COUNT'] ? ENV['NODE_COUNT'].to_i : 3
+      master_count = ENV['MASTER_COUNT'] ? ENV['MASTER_COUNT'].to_i : 1
+      ha_proxy = ENV['HA_PROXY'] ? ENV['HA_PROXY'].to_s == 'true' : false
       
       File.open("ip_address.txt", "w") do |f|
         (1..node_count).each do |i|
-          ip = %x(vagrant ssh node#{i} -c "hostname -I | awk '{print $1} '").strip
-          f.write("#{ip}\n")
+          vm_name = i <= master_count ? "master#{i}" : "worker#{i-master_count}"
+          # Use a reliable way to get IP that avoids warnings
+          ip = %x(vagrant ssh #{vm_name} -c "ip -4 addr show dev eth0 | grep -oP 'inet \\K[\\d.]+'").strip
+          
+          # If the above command fails, try the original method as fallback
+          if ip.empty?
+            ip = %x(vagrant ssh #{vm_name} -c "hostname -I | awk '{print \$1}'").strip
+          end
+          
+          f.write("#{vm_name}: #{ip}\n")
         end
+        
+        # Add HA Proxy IP if enabled
+        if ha_proxy
+          # Get HA Proxy IP
+          ip = %x(vagrant ssh haproxy -c "ip -4 addr show dev eth0 | grep -oP 'inet \\K[\\d.]+'").strip
+          
+          # If the above command fails, try the original method as fallback
+          if ip.empty?
+            ip = %x(vagrant ssh haproxy -c "hostname -I | awk '{print \$1}'").strip
+          end
+          
+          f.write("haproxy: #{ip}\n")
+        end
+        
+        # Add summary lines at the end
+        f.write("\nMaster Nodes: #{master_count}\n")
+        f.write("Worker Nodes: #{node_count - master_count}\n")
+        f.write("HA Proxy: #{ha_proxy ? 1 : 0}\n")
       end
     end
   end

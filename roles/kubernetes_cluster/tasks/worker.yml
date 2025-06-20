@@ -1,6 +1,6 @@
 - name: Set the hostname of the worker node
   ansible.builtin.hostname:
-    name: "worker"
+    name: "worker{{ groups['workers'].index(inventory_hostname) + 1 }}"
   become: true
 
 - name: Copy file to worker nodes
@@ -14,8 +14,6 @@
     path: /etc/kubernetes/pki/ca.crt
   register: ca_crt_file
 
-
-  
 - name: Join worker nodes to the cluster
   ansible.builtin.command:
     cmd: "bash  /home/{{ ansible_user }}/kubeadm_token_command"
@@ -39,3 +37,11 @@
     src: ./config
     dest: "/home/{{ ansible_user }}/.kube/config"
   become: true
+
+- name: Label worker nodes with role
+  ansible.builtin.command:
+    cmd: "kubectl --kubeconfig=/etc/kubernetes/admin.conf label node worker{{ groups['workers'].index(item) + 1 }} node-role.kubernetes.io/worker=worker --overwrite=true"
+  become: true
+  loop: "{{ groups['workers'] }}"
+  delegate_to: "{{ groups['master'][0] }}"
+  

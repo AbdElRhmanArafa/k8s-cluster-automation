@@ -16,7 +16,8 @@
     cmd: kubeadm init
   register: kubeadm_output
   changed_when: false
-  when: admin_conf_stat.stat.exists == false
+  when: admin_conf_stat.stat.exists == false and inventory_hostname == groups['master'][0]
+
 
 - name: Ensure ~/.kube directory exists
   ansible.builtin.file:
@@ -58,11 +59,12 @@
     mode: '0755'
   delegate_to: localhost
   become: false
-  when: admin_conf_stat.stat.exists == false
+  when: admin_conf_stat.stat.exists == false and inventory_hostname == groups['master'][0]
 
 - name: Run kubeadm token command
   ansible.builtin.command: kubeadm token create --print-join-command
   register: kubeadm_token_output
+  when: inventory_hostname == groups['master'][0]
 
 - name: Store kubeadm token output to file
   ansible.builtin.copy:
@@ -71,3 +73,10 @@
     mode: '0755'
   delegate_to: localhost
   become: false
+  when: inventory_hostname == groups['master'][0]
+
+# - name: Add other master nodes to the cluster
+#   ansible.builtin.command:
+#     cmd: "bash /home/{{ ansible_user }}/kubeadm_token_command"
+#   become: true
+#   when: admin_conf_stat.stat.exists == false and inventory_hostname != groups['master'][0]

@@ -1,0 +1,16 @@
+- name: Install HAproxy
+  ansible.builtin.package:
+    name: haproxy
+    state: present
+
+- name: Configure HAproxy for Kubernetes API
+  ansible.builtin.template:
+    src: ./roles/kubernetes_cluster/templates/haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    mode: '0644'
+
+- name: Ensure HAproxy is enabled and started
+  ansible.builtin.systemd:
+    name: haproxy
+    enabled: true
+    state: started
