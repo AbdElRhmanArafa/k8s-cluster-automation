@@ -82,6 +82,7 @@
 - name: restart containerd
   ansible.builtin.systemd:
     state: restarted
+    enabled: yes
     name: containerd
   when: "'haproxy' not in groups or inventory_hostname not in groups['haproxy']"
     

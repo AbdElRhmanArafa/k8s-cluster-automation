@@ -7,7 +7,7 @@ Vagrant.configure("2") do |config|
   ha_proxy = ENV['HA_PROXY'] ? ENV['HA_PROXY'].to_s == 'true' : false
   (1..node_count).each do |i|
     vm_name = i <= master_count ? "master#{i}" : "worker#{i-master_count}"
-    config.vm.define vm_name do |node|
+  config.vm.define vm_name do |node|
       node.vm.box = "generic/ubuntu2004" 
 
       if i <= master_count
@@ -15,7 +15,11 @@ Vagrant.configure("2") do |config|
       else
         node.vm.hostname = "worker-node#{i - master_count}"
       end
-  
+      
+      # SSH Configuration
+      node.ssh.insert_key = true
+      node.ssh.forward_agent = true
+
       node.vm.provider :libvirt do |libvirt|
         if i <= master_count
           libvirt.memory = 2048
@@ -26,7 +30,8 @@ Vagrant.configure("2") do |config|
         end
       end
 
-      node.vm.provision "shell", path: "bootstrap.sh"
+      # First run bootstrap script to setup users and SSH
+      node.vm.provision "shell", path: "bootstrap.sh", privileged: true
     end
   end
   
@@ -36,14 +41,22 @@ Vagrant.configure("2") do |config|
       node.vm.box = "generic/ubuntu2004"
       node.vm.hostname = "haproxy"
       
+      # SSH Configuration
+      node.ssh.insert_key = true
+      node.ssh.forward_agent = true
+      
       node.vm.provider :libvirt do |libvirt|
         libvirt.memory = 512
         libvirt.cpus = 1
       end
       
-      node.vm.provision "shell", path: "bootstrap.sh"
+      # First run bootstrap script to setup users and SSH
+      node.vm.provision "shell", path: "bootstrap.sh", privileged: true
     end
   end
+
+  # Upload SSH keys - this is handled in bootstrap.sh now
+  config.vm.provision "file", source: "~/.ssh/id_ed25519.pub", destination: "/tmp/id_ed25519.pub"
 
   config.trigger.after :up do |trigger|
     trigger.name = "Getting the IP address of the VMs"

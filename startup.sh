@@ -70,36 +70,10 @@ prepare_inventory() {
         echo "Error: IP address file not found at $IP_FILE"
         return 1
     fi
-    
-    # Check required packages
-    if ! command -v expect &> /dev/null; then
-        echo "expect could not be found, installing..."
-        if command -v pacman &> /dev/null; then
-            sudo pacman -Syy expect
-        elif command -v apt-get &> /dev/null; then
-            sudo apt-get update && sudo apt-get install -y expect
-        elif command -v yum &> /dev/null; then
-            sudo yum install -y expect
-        else
-            echo "Error: Package manager not found. Please install 'expect' manually."
-            return 1
-        fi
-    else
-        echo "expect is already installed"
-    fi
-
-    # Ensure SSH key exists
-    SSH_KEY="/home/arafa/.ssh/id_ed25519.pub"
-    if [ ! -f "$SSH_KEY" ]; then
-        echo "Error: SSH key not found at $SSH_KEY. Generate one using ssh-keygen."
-        return 1
-    fi
 
     # Create inventory file with master and worker sections
     echo "[master]" > "$INVENTORY_FILE"
-
-    # Read IP addresses from file and copy SSH keys
-    local password="it"
+    # Read IP addresses from file and add to inventory
     bool_var_workers=false
     bool_var_haproxy=false
     while IFS=: read -r hostname ip; do
@@ -108,14 +82,6 @@ prepare_inventory() {
         ip=$(echo "$ip" | xargs)
         
         echo "Processing $hostname with IP: $ip"
-        
-        # Copy SSH key to the server
-        expect << EOF
-            spawn ssh-copy-id -o StrictHostKeyChecking=no -i "$SSH_KEY" "ubuntu@$ip"
-            expect "password:"
-            send "$password\r"
-            expect eof
-EOF
 
         
         # Add to appropriate section in inventory
