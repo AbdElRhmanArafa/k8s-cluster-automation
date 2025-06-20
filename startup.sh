@@ -9,6 +9,7 @@ help() {
     echo "  -c CNI      Set Container Network Interface plugin:"
     echo "              Options: flannel, calico, cilium, weave, kuberouter (default: calico)"
     echo "  -d          Destroy VMs instead of creating them"
+    echo "  -r          Reset the kubernetes cluster (clean all nodes)"
 }
 
 metadata() {
@@ -28,6 +29,28 @@ metadata() {
         echo "Setting up cluster with $MASTER_COUNT master(s) and $WORKER_COUNT worker(s) (total: $NODE_COUNT nodes)"
     fi
 }
+
+# Function to reset the kubernetes cluster
+reset_cluster() {
+    echo "Resetting kubernetes on all nodes..."
+
+    # Reset all master and worker nodes
+    ansible -i inventory.INI all -m shell -a "kubeadm reset -f" --become
+
+    # Clean up files
+    ansible -i inventory.INI all -m shell -a "rm -rf /etc/kubernetes/* /var/lib/kubelet/* /var/lib/etcd/* ~/.kube/* /tmp/kubeadm* /etc/cni/net.d/*" --become
+
+    # Remove old files
+    rm -f kubeadm_join_command.log kubeadm_token_command config
+
+    # Restart services
+    ansible -i inventory.INI all -m systemd -a "name=containerd state=restarted" --become
+    ansible -i inventory.INI all -m systemd -a "name=kubelet state=restarted" --become
+
+    echo "Reset complete. You can now run the deployment again."
+    exit 0
+}
+
 # Function to save variables to cache file
 save_to_cache() {
     local CACHE_FILE="/home/arafa/Documents/project_github/k8s-cluster-automation/cache"
@@ -108,9 +131,17 @@ prepare_inventory() {
 }
 
 main() {
+
+    # Check if we need to reset the cluster
+    if [ "$RESET" = "true" ]; then
+        reset_cluster
+        exit 0
+    fi
     # Change to the vagrant directory to use the Vagrantfile there
     cd vagrant || { echo "Failed to change to vagrant directory"; exit 1; }
     
+
+
     # Check if we need to destroy VMs
     if [ "$DESTROY" = "true" ]; then
         # Load configuration from cache before destroying
@@ -174,10 +205,11 @@ PROVISION=false
 CNI_PLUGIN="calico"
 DESTROY=false
 HA_PROXY=false
+RESET=false
 
 
 # Process command line arguments using getopts
-while getopts ":hm:w:pc:d" opt; do
+while getopts ":hm:w:pc:dr" opt; do
     case $opt in
         h)
             help
@@ -207,6 +239,9 @@ while getopts ":hm:w:pc:d" opt; do
             ;;
         d)
             DESTROY=true
+            ;;
+        r)
+            RESET=true
             ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2
